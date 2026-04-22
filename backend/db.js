@@ -1,43 +1,61 @@
-import Database from "better-sqlite3";
+import mysql from "mysql2/promise";
 import bcrypt from "bcryptjs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = path.join(__dirname, "data.db");
+const {
+  DB_HOST = "localhost",
+  DB_PORT = "3306",
+  DB_USER = "root",
+  DB_PASSWORD = "",
+  DB_NAME = "poc_login",
+  DB_CONNECTION_LIMIT = "10",
+} = process.env;
 
-const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
+export const pool = mysql.createPool({
+  host: DB_HOST,
+  port: Number(DB_PORT),
+  user: DB_USER,
+  password: DB_PASSWORD,
+  database: DB_NAME,
+  waitForConnections: true,
+  connectionLimit: Number(DB_CONNECTION_LIMIT),
+  queueLimit: 0,
+  charset: "utf8mb4",
+});
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    username      TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
+export async function initDatabase() {
+  const conn = await pool.getConnection();
+  try {
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        username      VARCHAR(64) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
 
-function seedDefaultAdmin() {
-  const row = db
-    .prepare("SELECT COUNT(*) AS count FROM users WHERE username = ?")
-    .get("admin");
+    const [rows] = await conn.query(
+      "SELECT COUNT(*) AS count FROM users WHERE username = ?",
+      ["admin"]
+    );
 
-  if (row.count === 0) {
-    const hash = bcrypt.hashSync("admin", 10);
-    db.prepare(
-      "INSERT INTO users (username, password_hash) VALUES (?, ?)"
-    ).run("admin", hash);
-    console.log("[db] 기본 admin 계정을 생성했습니다 (admin / admin)");
+    if (rows[0].count === 0) {
+      const hash = bcrypt.hashSync("admin", 10);
+      await conn.query(
+        "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+        ["admin", hash]
+      );
+      console.log("[db] 기본 admin 계정을 생성했습니다 (admin / admin)");
+    }
+  } finally {
+    conn.release();
   }
 }
 
-seedDefaultAdmin();
-
-export function findUserByUsername(username) {
-  return db
-    .prepare("SELECT id, username, password_hash, created_at FROM users WHERE username = ?")
-    .get(username);
+export async function findUserByUsername(username) {
+  const [rows] = await pool.query(
+    "SELECT id, username, password_hash, created_at FROM users WHERE username = ? LIMIT 1",
+    [username]
+  );
+  return rows[0];
 }
-
-export default db;
