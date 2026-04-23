@@ -33,6 +33,7 @@ export default function Login() {
       }
 
       sessionStorage.setItem("user", JSON.stringify(data.user));
+      sessionStorage.setItem("sessionId", data.sessionId);
       navigate("/success", { replace: true });
     } catch (err) {
       console.error(err);

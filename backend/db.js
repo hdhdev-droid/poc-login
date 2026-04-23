@@ -1,23 +1,14 @@
 import mysql from "mysql2/promise";
 import bcrypt from "bcryptjs";
 
-const {
-  DB_HOST = "localhost",
-  DB_PORT = "3306",
-  DB_USER = "root",
-  DB_PASSWORD = "",
-  DB_NAME = "poc_login",
-  DB_CONNECTION_LIMIT = "10",
-} = process.env;
-
 export const pool = mysql.createPool({
-  host: DB_HOST,
-  port: Number(DB_PORT),
-  user: DB_USER,
-  password: DB_PASSWORD,
-  database: DB_NAME,
+  host: "localhost",
+  port: 3306,
+  user: "root",
+  password: "",
+  database: "poc_login",
   waitForConnections: true,
-  connectionLimit: Number(DB_CONNECTION_LIMIT),
+  connectionLimit: 10,
   queueLimit: 0,
   charset: "utf8mb4",
 });

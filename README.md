@@ -1,6 +1,6 @@
 # poc-login
 
-React + Express + **MySQL** 로 구성된 로그인 POC 입니다.
+React + Express + **MySQL + Redis** 로 구성된 로그인 POC 입니다.
 
 ```
 poc-login/
@@ -12,6 +12,7 @@ poc-login/
 
 - Node.js 18 이상
 - 접속 가능한 MySQL / MariaDB 인스턴스 (호스트, 포트, 계정, DB 이름)
+- Redis 인스턴스 (`localhost:6379`)
 
 ## 1. MySQL 데이터베이스 준비
 
@@ -52,10 +53,14 @@ DB_CONNECTION_LIMIT=10
 
 - `users` 테이블이 없으면 자동 생성
 - `admin` 계정이 없으면 비밀번호 `admin` (bcrypt 해시) 으로 자동 추가
+- Redis 연결 성공 시 로그인 세션을 저장해서 현재 로그인 사용자 수를 집계
 
 API:
 
 - `POST /api/login` — body: `{ "username": "admin", "password": "admin" }`
+- `POST /api/logout` — body: `{ "sessionId": "..." }`
+- `POST /api/session/refresh` — body: `{ "sessionId": "..." }` (세션 TTL 갱신)
+- `GET  /api/online-users` — 현재 로그인 사용자 수 반환
 - `GET  /api/health` — DB 연결 상태 확인 (`SELECT 1`)
 
 ## 3. 프론트엔드 실행
@@ -74,11 +79,11 @@ npm run dev
 
 1. 로그인 폼에서 `username`, `password` 를 `POST /api/login` 으로 전송
 2. 백엔드는 MySQL 의 `users` 테이블을 조회 → `bcrypt.compare` 로 비밀번호 검증
-3. 성공 시 사용자 정보를 응답 → 프론트엔드는 `sessionStorage` 에 저장 후 성공 페이지로 라우팅
-4. 성공 페이지에서 사용자 정보를 표시하고 로그아웃 가능
+3. 성공 시 사용자 정보 + `sessionId` 를 응답 → 프론트엔드는 `sessionStorage` 에 저장 후 성공 페이지로 라우팅
+4. 성공 페이지에서 사용자 정보 + 현재 로그인 사용자 수를 표시하고 로그아웃 가능
 
 ## 메모
 
-- DB 접속 정보는 모두 `backend/.env` 로 관리됩니다. `.env` 는 git 에 커밋되지 않습니다(`backend/.gitignore`).
+- Redis는 기본적으로 `localhost:6379` 에 연결합니다.
 - 기존 `index.html` 은 정적 데모로 남겨두었습니다.
 - POC 용이므로 세션/JWT, HTTPS, rate limit 등은 의도적으로 생략되어 있습니다.
